@@ -10,7 +10,7 @@ namespace MyShop.Core.Models
     {
         public string Id { get; set; }
         public String Category { get; set; }
-        public ProductCategory M() 
+        public ProductCategory () 
         {
             this.Id = Guid.NewGuid().ToString();
 
