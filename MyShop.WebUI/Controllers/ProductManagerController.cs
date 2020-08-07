@@ -1,76 +1,132 @@
-﻿using MyShop.Core.Models;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.Caching;
-using System.Text;
-using System.Threading.Tasks;
+using System.Web;
+using System.Web.Mvc;
+using MyShop.Core.Models;
+using MyShop.DataInMemory;
+using MyShop.Core.ViewModels;
+using MyShop.Core.Contracts;
 
-namespace MyShop.DataAccess.InMemory
+namespace MyShop.WebUI.Controllers
 {
-    public class ProductCategoryRepository
+    public class ProductManagerController : Controller
     {
-        ObjectCache cache = MemoryCache.Default;
-        List<ProductCategory> productCategories = new List<ProductCategory>();
+        IRepository<Product> context;
+        IRepository<ProductCategory> productCategories;
 
-        public ProductCategoryRepository()
+        public ProductManagerController(IRepository<Product> productContext, IRepository<ProductCategory> productCategoryContext)
         {
-            productCategories = cache["productsCategories"] as List<ProductCategory>;
-            if (productCategories == null)
+            context = productContext;
+            productCategories = productCategoryContext;
+        }
+        // GET: ProductManager
+        public ActionResult Index()
+        {
+            List<Product> products = context.Collection().ToList();
+            return View(products);
+        }
+
+        public ActionResult Create()
+        {
+            ProductManagerViewModel viewModel = new ProductManagerViewModel();
+
+            viewModel.Product = new Product();
+            viewModel.ProductCategories = productCategories.Collection();
+            return View(viewModel);
+        }
+
+        [HttpPost]
+        public ActionResult Create(Product product)
+        {
+            if (!ModelState.IsValid)
             {
-                productCategories = new List<ProductCategory>();
-            }
-        }
-        public void Commit()
-        {
-            cache["productsCategories"] = productCategories;
-        }
-
-        public void Insert(ProductCategory p)
-        {
-            productCategories.Add(p);
-        }
-
-        public void Update(ProductCategory productCategory)
-        {
-            ProductCategory productCategoryToUpdate = productCategories.Find(p => p.Id == productCategory.Id);
-
-            if (productCategoryToUpdate != null)
-            {
-                productCategoryToUpdate = productCategory;
+                return View(product);
             }
             else
             {
-                throw new Exception("Product not found");
-            }
-        }
-        public ProductCategory Find(string Id)
-        {
-            ProductCategory productCategory = productCategories.Find(p => p.Id == Id);
-            if (productCategory != null)
-            {
-                return productCategory;
-            }
-            else
-            {
-                throw new Exception("Product not found");
-            }
-        }
-        public IQueryable<ProductCategory> Collection()
-        {
-            return productCategories.AsQueryable();
-        }
-        public void Delete(string Id)
-        {
-            ProductCategory productCategoryToDelete = productCategories.Find(p => p.Id == Id);
+                context.Insert(product);
+                context.Commit();
 
-            if (productCategoryToDelete != null)
+                return RedirectToAction("Index");
+            }
+
+        }
+
+        public ActionResult Edit(string Id)
+        {
+            Product product = context.Find(Id);
+            if (product == null)
             {
-                productCategories.Remove(productCategoryToDelete);
+                return HttpNotFound();
             }
             else
             {
-                throw new Exception("Product not found!");
+                ProductManagerViewModel viewModel = new ProductManagerViewModel();
+                viewModel.Product = product;
+                viewModel.ProductCategories = productCategories.Collection();
+
+                return View(viewModel);
+            }
+        }
+
+        [HttpPost]
+        public ActionResult Edit(Product product, string Id)
+        {
+            Product productToEdit = context.Find(Id);
+
+            if (productToEdit == null)
+            {
+                return HttpNotFound();
+            }
+            else
+            {
+                if (!ModelState.IsValid)
+                {
+                    return View(product);
+                }
+
+                productToEdit.Category = product.Category;
+                productToEdit.Description = product.Description;
+                productToEdit.Image = product.Image;
+                productToEdit.Name = product.Name;
+                productToEdit.Price = product.Price;
+
+                context.Commit();
+
+                return RedirectToAction("Index");
+            }
+        }
+
+        public ActionResult Delete(string Id)
+        {
+            Product productToDelete = context.Find(Id);
+
+            if (productToDelete == null)
+            {
+                return HttpNotFound();
+            }
+            else
+            {
+                return View(productToDelete);
+            }
+        }
+
+        [HttpPost]
+        [ActionName("Delete")]
+        public ActionResult ConfirmDelete(string Id)
+        {
+            Product productToDelete = context.Find(Id);
+
+            if (productToDelete == null)
+            {
+                return HttpNotFound();
+            }
+            else
+            {
+                context.Delete(Id);
+                context.Commit();
+                return RedirectToAction("Index");
             }
         }
     }

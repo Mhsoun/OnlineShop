@@ -1,5 +1,4 @@
 ﻿using MyShop.Core.Models;
-using MyShop.DataAccess.InMemory;
 using MyShop.DataInMemory;
 using System;
 using System.Collections.Generic;
